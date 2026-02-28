@@ -24,6 +24,7 @@ class SpotifyStackController:
         self.sp = sp
         self.stack: List[PlaybackFrame] = []
         self.active_uris: List[str] = []
+        self._context_name_cache: dict[str, str] = {}
 
     def current_playback(self):
         return self.sp.current_playback()
@@ -82,18 +83,73 @@ class SpotifyStackController:
                 seen.add(uri)
         return deduped[:100]
 
-    def _source_label_from_context(self, context_uri: Optional[str]) -> str:
-        label = context_uri or "Ad-hoc queue"
-        if label.startswith("spotify:"):
-            parts = label.split(":")
-            if len(parts) >= 3:
-                return f"{parts[1]}:{parts[2]}"
+    def _source_label_from_context(
+        self,
+        context_uri: Optional[str],
+        context_type: Optional[str] = None,
+        item: Optional[dict] = None,
+    ) -> str:
+        if not context_uri:
+            # When Spotify omits context, derive a useful label from track metadata.
+            if item and (item.get("album") or {}).get("name"):
+                return f"Album: {(item.get('album') or {}).get('name')}"
+            return "Ad-hoc queue"
+
+        if context_uri in self._context_name_cache:
+            return self._context_name_cache[context_uri]
+
+        if not context_uri.startswith("spotify:"):
+            return context_uri
+
+        parts = context_uri.split(":")
+        if len(parts) < 3:
+            return "Context"
+
+        kind, context_id = parts[1], parts[2]
+        if context_type:
+            kind = context_type
+
+        # Prefer names already present in playback payload.
+        if kind == "album" and item and (item.get("album") or {}).get("name"):
+            label = f"Album: {(item.get('album') or {}).get('name')}"
+            self._context_name_cache[context_uri] = label
+            return label
+        if kind == "artist" and item and item.get("artists"):
+            first_artist = item["artists"][0].get("name")
+            if first_artist:
+                label = f"Artist: {first_artist}"
+                self._context_name_cache[context_uri] = label
+                return label
+
+        label: Optional[str] = None
+        try:
+            if kind == "playlist":
+                label = (self.sp.playlist(context_id) or {}).get("name")
+            elif kind == "album":
+                label = (self.sp.album(context_id) or {}).get("name")
+            elif kind == "artist":
+                label = (self.sp.artist(context_id) or {}).get("name")
+        except Exception:
+            label = None
+
+        if not label:
+            friendly_kind = {
+                "playlist": "Playlist",
+                "album": "Album",
+                "artist": "Artist",
+                "show": "Show",
+                "collection": "Library",
+            }.get(kind, "Context")
+            label = friendly_kind
+
+        self._context_name_cache[context_uri] = label
         return label
 
     def _build_frame_from_playback(self, playback: dict) -> PlaybackFrame:
         item = playback.get("item") or {}
         artists = item.get("artists") or []
         context_uri = (playback.get("context") or {}).get("uri")
+        context_type = (playback.get("context") or {}).get("type")
         return PlaybackFrame(
             context_uri=context_uri,
             track_uri=item.get("uri"),
@@ -101,7 +157,21 @@ class SpotifyStackController:
             resume_uris=self._snapshot_resume_uris(),
             track_name=item.get("name") or "Unknown track",
             artist_names=", ".join(artist.get("name", "") for artist in artists) or "Unknown artist",
-            source_label=self._source_label_from_context(context_uri),
+            source_label=self._source_label_from_context(context_uri, context_type=context_type, item=item),
+        )
+
+    def describe_playback_source(self, playback: Optional[dict] = None) -> str:
+        if not playback:
+            playback = self.current_playback()
+        if not playback:
+            return "No context"
+
+        item = playback.get("item") or {}
+        context = playback.get("context") or {}
+        return self._source_label_from_context(
+            context.get("uri"),
+            context_type=context.get("type"),
+            item=item,
         )
 
     def toggle_playback(self):

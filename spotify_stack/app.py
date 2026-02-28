@@ -10,7 +10,13 @@ from .hotkeys import HotkeyManager
 from .ui import SpotifyStackApp
 
 
-SCOPE = "user-modify-playback-state user-read-playback-state user-top-read"
+SCOPE = (
+    "user-modify-playback-state "
+    "user-read-playback-state "
+    "user-top-read "
+    "playlist-read-private "
+    "playlist-read-collaborative"
+)
 TOKEN_CACHE_PATH = os.getenv(
     "SPOTIFY_TOKEN_CACHE_PATH",
     os.path.join(os.path.dirname(os.path.dirname(__file__)), ".spotify_token_cache"),

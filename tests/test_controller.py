@@ -21,6 +21,9 @@ class SpotifyStackControllerTests(unittest.TestCase):
             },
         }
         sp.devices.return_value = {"devices": [{"id": "dev123", "is_active": True}]}
+        sp.playlist.return_value = {"name": "My Playlist"}
+        sp.album.return_value = {"name": "Album A"}
+        sp.artist.return_value = {"name": "Artist A"}
         sp.queue.return_value = {
             "currently_playing": {"uri": "spotify:track:t1"},
             "queue": [{"uri": "spotify:track:t2"}],
@@ -39,7 +42,7 @@ class SpotifyStackControllerTests(unittest.TestCase):
         self.assertEqual(frame.context_uri, "spotify:playlist:abc")
         self.assertEqual(frame.track_uri, "spotify:track:t1")
         self.assertEqual(frame.progress_ms, 42000)
-        self.assertEqual(frame.source_label, "playlist:abc")
+        self.assertEqual(frame.source_label, "My Playlist")
         self.assertEqual(frame.track_name, "Track 1")
 
         sp.start_playback.assert_called_once_with(
@@ -108,7 +111,7 @@ class SpotifyStackControllerTests(unittest.TestCase):
         self.assertEqual(len(controller.stack), 1)
         frame = controller.stack[0]
         self.assertEqual(frame.track_uri, "spotify:track:t1")
-        self.assertEqual(frame.source_label, "playlist:abc")
+        self.assertEqual(frame.source_label, "My Playlist")
         sp.start_playback.assert_called_once()
 
     def test_hop_out_returns_to_album_after_queue_top(self):
@@ -159,7 +162,7 @@ class SpotifyStackControllerTests(unittest.TestCase):
 
         self.assertEqual(
             summary[0],
-            "1. Track 1 - A | from playlist:abc @ 00:42",
+            "1. Track 1 - A | from My Playlist @ 00:42",
         )
 
 

@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import ttk
 from typing import Callable, Dict, Optional
 
 from .controller import SpotifyStackController
@@ -16,8 +17,9 @@ class SpotifyStackApp:
         self.controller = controller
 
         self.root.title("Spotify Stack Player")
-        self.root.geometry("1180x500")
-        self.root.minsize(960, 500)
+        self.root.geometry("700x400")
+        self.root.minsize(700, 400)
+        self.root.configure(padx=10, pady=10)
 
         self.status_var = tk.StringVar(value="Ready")
         self.track_var = tk.StringVar(value="No active playback")
@@ -49,25 +51,38 @@ class SpotifyStackApp:
         self.status_var.set(status)
 
     def _build_ui(self):
-        top = tk.Frame(self.root, padx=14, pady=10)
+        top = ttk.Frame(self.root, padding=(4, 2))
         top.pack(fill="x")
 
-        tk.Label(top, textvariable=self.track_var, font=("Helvetica", 14, "bold"), anchor="w").pack(fill="x")
-        tk.Label(top, textvariable=self.context_var, anchor="w").pack(fill="x", pady=(4, 2))
-        tk.Label(top, textvariable=self.stack_depth_var, anchor="w").pack(fill="x")
+        ttk.Label(
+            top,
+            textvariable=self.track_var,
+            font=("Avenir Next", 15, "bold"),
+            anchor="w",
+        ).pack(fill="x")
+        ttk.Label(
+            top,
+            textvariable=self.context_var,
+            anchor="w",
+        ).pack(fill="x")
+        ttk.Label(
+            top,
+            textvariable=self.stack_depth_var,
+            anchor="w",
+        ).pack(fill="x")
 
-        controls = tk.Frame(self.root, padx=14, pady=8)
+        controls = ttk.Frame(self.root, padding=(4, 6))
         controls.pack(fill="x")
 
         buttons = [
-            ("Prev", self.controller.previous_track),
-            ("Play/Pause", self.controller.toggle_playback),
-            ("Next", self.controller.next_track),
-            ("-10s", lambda: self.controller.seek_relative(-10)),
-            ("+10s", lambda: self.controller.seek_relative(10)),
-            ("Queue Top", self.controller.queue_new_from_top_tracks),
-            ("Hop In Album", self.controller.hop_in_album),
-            ("Hop Out", self.controller.hop_out),
+            ("⏮ Prev", self.controller.previous_track),
+            ("⏯ Play/Pause", self.controller.toggle_playback),
+            ("Next ⏭", self.controller.next_track),
+            ("⌁ Queue Top", self.controller.queue_new_from_top_tracks),
+            ("⏪ -10s", lambda: self.controller.seek_relative(-10)),
+            ("+10s ⏩", lambda: self.controller.seek_relative(10)),
+            ("↳ Hop In Album", self.controller.hop_in_album),
+            ("↲ Hop Out", self.controller.hop_out),
         ]
 
         for col in range(4):
@@ -75,30 +90,47 @@ class SpotifyStackApp:
         for idx, (text, action) in enumerate(buttons):
             row = idx // 4
             col = idx % 4
-            tk.Button(
+            ttk.Button(
                 controls,
                 text=text,
-                width=18,
+                width=16,
                 command=lambda a=action: self._run_action(a),
             ).grid(row=row, column=col, padx=6, pady=6, sticky="ew")
 
-        middle = tk.Frame(self.root, padx=14, pady=6)
+        middle = ttk.Frame(self.root, padding=(4, 4))
         middle.pack(fill="both", expand=True)
 
-        tk.Label(middle, text="Stack Frames", anchor="w").pack(fill="x")
-        stack_frame = tk.Frame(middle, bd=1, relief="solid")
+        ttk.Label(
+            middle,
+            text="Stack Frames",
+            anchor="w",
+            font=("Avenir Next", 11, "bold"),
+        ).pack(fill="x")
+        stack_frame = ttk.Frame(middle)
         stack_frame.pack(fill="both", expand=True)
 
-        self.stack_list = tk.Listbox(stack_frame, height=12, activestyle="none")
+        self.stack_list = tk.Listbox(
+            stack_frame,
+            height=10,
+            activestyle="none",
+            bd=0,
+            highlightthickness=1,
+            font=("Menlo", 11),
+        )
         self.stack_list.pack(side="left", fill="both", expand=True)
-        scrollbar = tk.Scrollbar(stack_frame, orient="vertical", command=self.stack_list.yview)
+        scrollbar = ttk.Scrollbar(stack_frame, orient="vertical", command=self.stack_list.yview)
         scrollbar.pack(side="right", fill="y")
         self.stack_list.config(yscrollcommand=scrollbar.set)
         self.stack_list.insert(tk.END, "(empty)")
 
-        bottom = tk.Frame(self.root, padx=14, pady=8)
+        bottom = ttk.Frame(self.root, padding=(4, 2))
         bottom.pack(fill="x")
-        tk.Label(bottom, textvariable=self.status_var, anchor="w").pack(fill="x")
+        ttk.Label(
+            bottom,
+            textvariable=self.status_var,
+            anchor="w",
+            font=("Avenir Next", 10),
+        ).pack(fill="x")
 
     def _run_action(self, action):
         try:
@@ -117,7 +149,7 @@ class SpotifyStackApp:
                 artists = ", ".join(a["name"] for a in item.get("artists", []))
                 self.track_var.set(f"{item.get('name')} - {artists}")
 
-                context = (playback.get("context") or {}).get("uri", "none")
+                context = self.controller.describe_playback_source(playback)
                 progress = playback.get("progress_ms", 0) // 1000
                 self.context_var.set(f"Context: {context} | t={progress}s")
             elif force:
