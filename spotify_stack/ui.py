@@ -19,8 +19,8 @@ class SpotifyStackApp:
         self.controller = controller
 
         self.root.title("Spotify Stack Player")
-        self.root.geometry("700x400")
-        self.root.minsize(700, 400)
+        self.root.geometry("750x400")
+        self.root.minsize(750, 400)
         self.root.configure(padx=10, pady=10)
 
         self.status_var = tk.StringVar(value="Ready")
@@ -204,11 +204,21 @@ class SpotifyStackApp:
             context = self.controller.describe_playback_source(playback)
             progress = playback.get("progress_ms", 0) // 1000
             self.context_var.set(f"Context: {context} | t={progress}s")
+            current_frame_line = (
+                f"▶ CURRENT: {item.get('name')} - {artists} | {context} @ {progress // 60:02d}:{progress % 60:02d}"
+            )
         elif force:
             self.track_var.set("No active playback")
             self.context_var.set("Context: -")
+            current_frame_line = "▶ CURRENT: (none)"
+        else:
+            current_frame_line = "▶ CURRENT: (unknown)"
 
         self.stack_list.delete(0, tk.END)
+        self.stack_list.insert(tk.END, current_frame_line)
+        self.stack_list.itemconfig(0, {"bg": "#E8F3FF", "fg": "#0B3D91"})
+        self.stack_list.insert(tk.END, "────────")
+        self.stack_list.itemconfig(1, {"fg": "#8A8F98"})
         for line in stack_lines:
             self.stack_list.insert(tk.END, line)
         self.stack_depth_var.set(f"Stack depth: {stack_depth}")
