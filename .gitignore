@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+.venv-*/
+
+# Local secrets and auth
+.env
+.spotify_token_cache
+
+# OS/editor noise
+.DS_Store
