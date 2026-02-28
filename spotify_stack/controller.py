@@ -26,6 +26,14 @@ class SpotifyStackController:
         self.active_uris: List[str] = []
         self._context_name_cache: dict[str, str] = {}
 
+    def _is_top_queue_playback(self, playback: dict) -> bool:
+        if not self.active_uris:
+            return False
+        if (playback.get("context") or {}).get("uri"):
+            return False
+        track_uri = ((playback.get("item") or {}).get("uri")) or ""
+        return track_uri in self.active_uris
+
     def current_playback(self):
         return self.sp.current_playback()
 
@@ -88,7 +96,11 @@ class SpotifyStackController:
         context_uri: Optional[str],
         context_type: Optional[str] = None,
         item: Optional[dict] = None,
+        is_top_queue: bool = False,
     ) -> str:
+        if is_top_queue:
+            return "Top Queue"
+
         if not context_uri:
             # When Spotify omits context, derive a useful label from track metadata.
             if item and (item.get("album") or {}).get("name"):
@@ -150,6 +162,7 @@ class SpotifyStackController:
         artists = item.get("artists") or []
         context_uri = (playback.get("context") or {}).get("uri")
         context_type = (playback.get("context") or {}).get("type")
+        is_top_queue = self._is_top_queue_playback(playback)
         return PlaybackFrame(
             context_uri=context_uri,
             track_uri=item.get("uri"),
@@ -157,7 +170,9 @@ class SpotifyStackController:
             resume_uris=self._snapshot_resume_uris(),
             track_name=item.get("name") or "Unknown track",
             artist_names=", ".join(artist.get("name", "") for artist in artists) or "Unknown artist",
-            source_label=self._source_label_from_context(context_uri, context_type=context_type, item=item),
+            source_label=self._source_label_from_context(
+                context_uri, context_type=context_type, item=item, is_top_queue=is_top_queue
+            ),
         )
 
     def describe_playback_source(self, playback: Optional[dict] = None) -> str:
@@ -168,10 +183,12 @@ class SpotifyStackController:
 
         item = playback.get("item") or {}
         context = playback.get("context") or {}
+        is_top_queue = self._is_top_queue_playback(playback)
         return self._source_label_from_context(
             context.get("uri"),
             context_type=context.get("type"),
             item=item,
+            is_top_queue=is_top_queue,
         )
 
     def toggle_playback(self):
@@ -243,7 +260,7 @@ class SpotifyStackController:
 
         return tracks[:max_tracks]
 
-    def hop_in_album(self):
+    def hop_in_album(self, from_start: bool = False):
         playback = self.current_playback()
         if not playback or not playback.get("item"):
             return "No active playback."
@@ -256,6 +273,14 @@ class SpotifyStackController:
         if not album_uri:
             self.stack.pop()
             return "Current track has no album URI."
+
+        if from_start:
+            self._start_playback(
+                context_uri=album_uri,
+                offset={"position": 0},
+                position_ms=0,
+            )
+            return f"Hop in start: {album_uri}"
 
         self._start_playback(
             context_uri=album_uri,

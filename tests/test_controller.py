@@ -53,6 +53,21 @@ class SpotifyStackControllerTests(unittest.TestCase):
             position_ms=42000,
         )
 
+    def test_hop_in_from_start_uses_first_album_track(self):
+        sp = self.make_sp()
+        controller = SpotifyStackController(sp)
+
+        result = controller.hop_in_album(from_start=True)
+
+        self.assertEqual(result, "Hop in start: spotify:album:a1")
+        sp.start_playback.assert_called_once_with(
+            device_id="dev123",
+            context_uri="spotify:album:a1",
+            uris=None,
+            offset={"position": 0},
+            position_ms=0,
+        )
+
     def test_hop_out_restores_previous_context(self):
         sp = self.make_sp()
         controller = SpotifyStackController(sp)
@@ -164,6 +179,28 @@ class SpotifyStackControllerTests(unittest.TestCase):
             summary[0],
             "1. Track 1 - A | from My Playlist @ 00:42",
         )
+
+    def test_describe_source_shows_top_queue_for_queue_playback(self):
+        sp = self.make_sp()
+        playback = sp.current_playback.return_value
+        playback["context"] = None
+        controller = SpotifyStackController(sp)
+        controller.active_uris = ["spotify:track:t1", "spotify:track:t2"]
+
+        source = controller.describe_playback_source(playback)
+
+        self.assertEqual(source, "Top Queue")
+
+    def test_hop_in_from_top_queue_stores_top_queue_frame_label(self):
+        sp = self.make_sp()
+        playback = sp.current_playback.return_value
+        playback["context"] = None
+        controller = SpotifyStackController(sp)
+        controller.active_uris = ["spotify:track:t1", "spotify:track:t2"]
+
+        controller.hop_in_album()
+
+        self.assertEqual(controller.stack[-1].source_label, "Top Queue")
 
 
 if __name__ == "__main__":
