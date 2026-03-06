@@ -1,4 +1,4 @@
-# Spotify Stack Player
+# Spotify Stack Player 🎵
 
 Spotify Stack Player is a desktop Spotify controller focused on one workflow:
 
