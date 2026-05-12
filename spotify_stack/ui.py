@@ -201,7 +201,7 @@ class SpotifyStackApp:
             artists = ", ".join(a["name"] for a in item.get("artists", []))
             self.track_var.set(f"{item.get('name')} - {artists}")
 
-            context = self.controller.describe_playback_source(playback)
+            context = self.controller.describe_playback_source(playback, cache_only=True)
             progress = playback.get("progress_ms", 0) // 1000
             self.context_var.set(f"Context: {context} | t={progress}s")
             current_frame_line = (
@@ -228,7 +228,7 @@ class SpotifyStackApp:
             self._refresh_pending = False
             self._request_refresh()
         else:
-            self.root.after(3000, self._request_refresh)
+            self.root.after(10000, self._request_refresh)
 
     def _request_refresh(self, force: bool = False):
         if self._refresh_inflight:

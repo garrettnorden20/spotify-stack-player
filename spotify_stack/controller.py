@@ -97,6 +97,7 @@ class SpotifyStackController:
         context_type: Optional[str] = None,
         item: Optional[dict] = None,
         is_top_queue: bool = False,
+        cache_only: bool = False,
     ) -> str:
         if is_top_queue:
             return "Top Queue"
@@ -132,6 +133,17 @@ class SpotifyStackController:
                 label = f"Artist: {first_artist}"
                 self._context_name_cache[context_uri] = label
                 return label
+
+        # Skip API calls when only using cached data (e.g. during polling).
+        if cache_only:
+            friendly_kind = {
+                "playlist": "Playlist",
+                "album": "Album",
+                "artist": "Artist",
+                "show": "Show",
+                "collection": "Library",
+            }.get(kind, "Context")
+            return friendly_kind
 
         label: Optional[str] = None
         try:
@@ -175,7 +187,7 @@ class SpotifyStackController:
             ),
         )
 
-    def describe_playback_source(self, playback: Optional[dict] = None) -> str:
+    def describe_playback_source(self, playback: Optional[dict] = None, cache_only: bool = False) -> str:
         if not playback:
             playback = self.current_playback()
         if not playback:
@@ -189,6 +201,7 @@ class SpotifyStackController:
             context_type=context.get("type"),
             item=item,
             is_top_queue=is_top_queue,
+            cache_only=cache_only,
         )
 
     def toggle_playback(self):
